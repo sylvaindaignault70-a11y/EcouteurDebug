@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#080810"
+    android:clipToPadding="false"
+    android:paddingBottom="160dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎙 ÉCOUTER ENREGISTREMENT"
+            android:textColor="#7c3aed"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="20dp"/>
+
+        <Button android:id="@+id/btnPickWav"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="📂 Choisir fichier .wav"
+            android:backgroundTint="#06b6d4" android:textColor="#ffffff"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView android:id="@+id/tvEcouteurFile"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Aucun fichier sélectionné"
+            android:textColor="#64748b" android:textSize="12sp"
+            android:gravity="center" android:layout_marginBottom="20dp"
+            android:ellipsize="middle" android:maxLines="2"/>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="12dp"
+            android:gravity="center_vertical">
+            <Button android:id="@+id/btnEcouteurPlay"
+                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+                android:text="▶ Lecture" android:backgroundTint="#10b981" android:textColor="#ffffff"
+                android:layout_marginEnd="8dp" android:enabled="false"/>
+            <Button android:id="@+id/btnEcouteurStop"
+                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+                android:text="⏹ Stop" android:backgroundTint="#1a1a2e" android:textColor="#e2e8f0"
+                android:enabled="false"/>
+        </LinearLayout>
+
+        <SeekBar android:id="@+id/seekEcouteur"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:progressTint="#7c3aed" android:thumbTint="#7c3aed"/>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="16dp">
+            <TextView android:id="@+id/tvEcouteurNow"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="0:00" android:textColor="#94a3b8" android:textSize="12sp"/>
+            <TextView android:id="@+id/tvEcouteurDur"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="0:00" android:textColor="#94a3b8" android:textSize="12sp"/>
+        </LinearLayout>
+
+        <TextView android:id="@+id/tvEcouteurStatus"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="" android:textColor="#64748b" android:textSize="12sp"
+            android:gravity="center"/>
+
+    </LinearLayout>
+</ScrollView>

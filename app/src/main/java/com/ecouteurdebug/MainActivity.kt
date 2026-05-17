@@ -39,9 +39,10 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) show(TraductionFragment())
         nav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_trad    -> { show(TraductionFragment()); true }
-                R.id.nav_musique -> { show(MusiqueFragment());    true }
-                R.id.nav_eq      -> { show(EqFragment());         true }
+                R.id.nav_trad     -> { show(TraductionFragment()); true }
+                R.id.nav_musique  -> { show(MusiqueFragment());    true }
+                R.id.nav_eq       -> { show(EqFragment());         true }
+                R.id.nav_ecouter  -> { show(EcouteurFragment());   true }
                 else -> false
             }
         }
