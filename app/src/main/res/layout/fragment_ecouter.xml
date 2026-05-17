@@ -26,7 +26,8 @@
             android:layout_width="match_parent" android:layout_height="52dp"
             android:text="📂 Choisir fichier .wav"
             android:backgroundTint="#06b6d4" android:textColor="#ffffff"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="12dp"
+                android:maxLines="1"/>
 
         <TextView android:id="@+id/tvEcouteurFile"
             android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -41,11 +42,13 @@
             <Button android:id="@+id/btnEcouteurPlay"
                 android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
                 android:text="▶ Lecture" android:backgroundTint="#10b981" android:textColor="#ffffff"
-                android:layout_marginEnd="8dp" android:enabled="false"/>
+                android:layout_marginEnd="8dp" android:enabled="false"
+                android:maxLines="1"/>
             <Button android:id="@+id/btnEcouteurStop"
                 android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
                 android:text="⏹ Stop" android:backgroundTint="#1a1a2e" android:textColor="#e2e8f0"
-                android:enabled="false"/>
+                android:enabled="false"
+                android:maxLines="1"/>
         </LinearLayout>
 
         <SeekBar android:id="@+id/seekEcouteur"
