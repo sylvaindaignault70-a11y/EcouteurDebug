@@ -153,7 +153,10 @@ class TraductionFragment : Fragment() {
             override fun onRmsChanged(v: Float) {}
             override fun onBufferReceived(b: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onPartialResults(b: Bundle?) {}
+            override fun onPartialResults(b: Bundle?) {
+                val partial = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                if (!partial.isNullOrBlank()) requireActivity().runOnUiThread { tvOriginal.text = "... $partial" }
+            }
             override fun onEvent(t: Int, b: Bundle?) {}
         })
 
@@ -161,6 +164,7 @@ class TraductionFragment : Fragment() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, srLocale)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         }
         listening = true
         recognizer?.startListening(intent)
