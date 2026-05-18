@@ -1,7 +1,6 @@
 package com.ecouteurdebug
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,19 +16,13 @@ class MainActivity : AppCompatActivity() {
 
     private val reqPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
+    ) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
-                add(Manifest.permission.READ_MEDIA_AUDIO)
-            }
-        }.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
-        if (needed.isNotEmpty()) reqPerms.launch(needed.toTypedArray())
+        requestPerms()
 
         val nav = findViewById<BottomNavigationView>(R.id.bottomNav)
         ViewCompat.setOnApplyWindowInsetsListener(nav) { v, insets ->
@@ -42,15 +35,20 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_trad     -> { show(TraductionFragment()); true }
                 R.id.nav_musique  -> { show(MusiqueFragment());    true }
                 R.id.nav_eq       -> { show(EqFragment());         true }
-                R.id.nav_ecouter  -> { show(EcouteurFragment());   true }
+                R.id.nav_settings -> { show(SettingsFragment());   true }
                 else -> false
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isFinishing) stopService(Intent(this, MusicService::class.java))
+    private fun requestPerms() {
+        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+                add(Manifest.permission.READ_MEDIA_AUDIO)
+            }
+        }.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+        if (needed.isNotEmpty()) reqPerms.launch(needed.toTypedArray())
     }
 
     private fun show(f: Fragment) {

@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.*
 import android.speech.*
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,8 +43,8 @@ class TraductionFragment : Fragment() {
             "ar" to "ar-SA", "ru" to "ru-RU"
         )
         val TTS_LOCALE = mapOf(
-            "fr" to Locale.FRENCH, "en" to Locale.US, "es" to Locale("es", "ES"),
-            "de" to Locale.GERMAN, "pt" to Locale("pt", "BR"), "it" to Locale.ITALIAN,
+            "fr" to Locale.FRENCH, "en" to Locale.US, "es" to Locale("es","ES"),
+            "de" to Locale.GERMAN, "pt" to Locale("pt","BR"), "it" to Locale.ITALIAN,
             "zh" to Locale.CHINESE, "ja" to Locale.JAPANESE, "ko" to Locale.KOREAN,
             "ar" to Locale("ar"), "ru" to Locale("ru")
         )
@@ -60,6 +61,11 @@ class TraductionFragment : Fragment() {
     private lateinit var tvStatus: TextView
     private lateinit var tvOriginal: TextView
     private lateinit var tvResult: TextView
+    private lateinit var tvDateTime: TextView
+    private lateinit var tvDebugLog: TextView
+    private lateinit var tvDebugRms: TextView
+    private lateinit var scrollDebug: android.widget.ScrollView
+    private val debugLog = StringBuilder()
 
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
@@ -71,6 +77,14 @@ class TraductionFragment : Fragment() {
     private var isRecording = false
     private val pcmChunks = mutableListOf<ByteArray>()
     private var recordingStartMs = 0L
+
+    private val clockHandler = Handler(Looper.getMainLooper())
+    private val clockRunnable = object : Runnable {
+        override fun run() {
+            if (isAdded) tvDateTime.text = SimpleDateFormat("EEE dd MMM yyyy  HH:mm:ss", Locale.getDefault()).format(Date())
+            clockHandler.postDelayed(this, 1000)
+        }
+    }
 
     private val saveWavLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("audio/wav")
@@ -86,16 +100,23 @@ class TraductionFragment : Fragment() {
     override fun onViewCreated(v: View, s: Bundle?) {
         super.onViewCreated(v, s)
 
-        spinMoi    = v.findViewById(R.id.spinTradMoi)
-        spinOther  = v.findViewById(R.id.spinTradOther)
-        btnMoi     = v.findViewById(R.id.btnMoi)
-        btnAutre   = v.findViewById(R.id.btnAutre)
-        btnStop    = v.findViewById(R.id.btnStop)
-        btnRec     = v.findViewById(R.id.btnRec)
-        btnSave    = v.findViewById(R.id.btnSaveText)
-        tvStatus   = v.findViewById(R.id.tvTradStatus)
-        tvOriginal = v.findViewById(R.id.tvOriginal)
-        tvResult   = v.findViewById(R.id.tvTradResult)
+        spinMoi     = v.findViewById(R.id.spinTradMoi)
+        spinOther   = v.findViewById(R.id.spinTradOther)
+        btnMoi      = v.findViewById(R.id.btnMoi)
+        btnAutre    = v.findViewById(R.id.btnAutre)
+        btnStop     = v.findViewById(R.id.btnStop)
+        btnRec      = v.findViewById(R.id.btnRec)
+        btnSave     = v.findViewById(R.id.btnSaveText)
+        tvStatus    = v.findViewById(R.id.tvTradStatus)
+        tvOriginal  = v.findViewById(R.id.tvOriginal)
+        tvResult    = v.findViewById(R.id.tvTradResult)
+        tvDateTime  = v.findViewById(R.id.tvDateTime)
+        tvDebugLog  = v.findViewById(R.id.tvDebugLog)
+        tvDebugRms  = v.findViewById(R.id.tvDebugRms)
+        scrollDebug = v.findViewById(R.id.scrollDebug)
+
+        v.findViewById<Button>(R.id.btnDebugClear).setOnClickListener { debugLog.clear(); tvDebugLog.text = "" }
+        v.findViewById<Button>(R.id.btnRaccrocher).setOnClickListener { stopAndSave() }
 
         val labels = LANGS.map { it.second }
         spinMoi.adapter   = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, labels)
@@ -107,6 +128,9 @@ class TraductionFragment : Fragment() {
 
         tts = TextToSpeech(requireContext()) {}
 
+        clockHandler.post(clockRunnable)
+        dbg("🐛 DEBUG prêt — appuie MOI ou L'AUTRE")
+
         btnMoi.setOnClickListener   { startListen(true) }
         btnAutre.setOnClickListener { startListen(false) }
         btnStop.setOnClickListener  { stopAndSave() }
@@ -117,8 +141,16 @@ class TraductionFragment : Fragment() {
     private fun langMoi()   = LANGS[spinMoi.selectedItemPosition].first
     private fun langOther() = LANGS[spinOther.selectedItemPosition].first
 
+    private fun dbg(msg: String) {
+        Log.d("ED_SPEECH", msg)
+        if (isAdded) activity?.runOnUiThread {
+            debugLog.append("[${timestamp()}] $msg\n")
+            tvDebugLog.text = debugLog
+            scrollDebug.post { scrollDebug.fullScroll(android.view.View.FOCUS_DOWN) }
+        }
+    }
+
     private fun startListen(isMe: Boolean) {
-        if (!isRecording) startAudioRecording()
         val srcLang = if (isMe) langMoi() else langOther()
         val srLocale = SR_LOCALE[srcLang] ?: "fr-FR"
 
@@ -126,36 +158,56 @@ class TraductionFragment : Fragment() {
         recognizer = SpeechRecognizer.createSpeechRecognizer(requireContext())
         recognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onResults(b: Bundle?) {
-                val text = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: return
-                requireActivity().runOnUiThread { tvOriginal.text = text }
+                listening = false
+                val text = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                if (text.isNullOrBlank()) {
+                    dbg("⚠ onResults: vide")
+                    requireActivity().runOnUiThread { tvStatus.text = "— Appuie MOI ou L'AUTRE"; resetBtnAlpha() }
+                    return
+                }
+                dbg("✅ RESULT ${if (isMe) "MOI" else "AUTRE"}: $text")
+                requireActivity().runOnUiThread { tvOriginal.text = text; tvStatus.text = "⏳ Traduction..." }
                 val from = if (isMe) langMoi() else langOther()
                 val to   = if (isMe) langOther() else langMoi()
                 scope.launch {
                     val trad = translate(text, from, to)
                     requireActivity().runOnUiThread {
+                        resetBtnAlpha()
                         if (trad.isNotBlank()) {
                             tvResult.text = trad
-                            tvStatus.text = "✓"
                             speak(trad, to)
                             log.append("[${timestamp()}] ${if (isMe) "MOI" else "AUTRE"}: $text → $trad\n\n")
+                            tvStatus.text = "✓ Appuie MOI ou L'AUTRE"
                         } else {
-                            tvStatus.text = "⚠ Traduction échouée (réseau?)"
+                            tvStatus.text = "⚠ Traduction échouée — Appuie MOI ou L'AUTRE"
                         }
                     }
                 }
-                if (listening) startListen(isMe)
             }
             override fun onError(e: Int) {
-                if (listening) Handler(Looper.getMainLooper()).postDelayed({ if (listening) startListen(isMe) }, 800)
+                listening = false
+                val msg = when(e) {
+                    SpeechRecognizer.ERROR_AUDIO -> "AUDIO(3)=mic bloqué"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "BUSY(8)"
+                    SpeechRecognizer.ERROR_NO_MATCH -> "NO_MATCH(7)"
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "TIMEOUT(6)"
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "PERMISSION(9)"
+                    SpeechRecognizer.ERROR_NETWORK -> "NETWORK(2)"
+                    else -> "ERROR($e)"
+                }
+                dbg("❌ $msg locale=$srLocale")
+                requireActivity().runOnUiThread { tvStatus.text = "❌ $msg"; resetBtnAlpha() }
             }
-            override fun onReadyForSpeech(p: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(v: Float) {}
+            override fun onReadyForSpeech(p: Bundle?) { dbg("🟢 READY locale=$srLocale") }
+            override fun onBeginningOfSpeech() { dbg("🔴 SPEECH DETECTED") }
+            override fun onRmsChanged(v: Float) {
+                if (isAdded) activity?.runOnUiThread { tvDebugRms.text = "%.1f".format(v) }
+            }
             override fun onBufferReceived(b: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            override fun onEndOfSpeech() { dbg("⏹ END OF SPEECH") }
             override fun onPartialResults(b: Bundle?) {
-                val partial = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                if (!partial.isNullOrBlank()) requireActivity().runOnUiThread { tvOriginal.text = "... $partial" }
+                val partial = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: return
+                requireActivity().runOnUiThread { tvOriginal.text = "... $partial" }
             }
             override fun onEvent(t: Int, b: Bundle?) {}
         })
@@ -173,66 +225,51 @@ class TraductionFragment : Fragment() {
         btnAutre.alpha = if (isMe) 0.5f else 1f
     }
 
+    private fun resetBtnAlpha() { btnMoi.alpha = 1f; btnAutre.alpha = 1f }
+
     private fun stopListening() {
         listening = false
-        recognizer?.stopListening()
-        recognizer?.destroy()
-        recognizer = null
-        btnMoi.alpha   = 1f
-        btnAutre.alpha = 1f
+        recognizer?.stopListening(); recognizer?.destroy(); recognizer = null
+        btnMoi.alpha = 1f; btnAutre.alpha = 1f
     }
 
     private fun stopAndSave() {
-        stopListening()
-        stopAudioRecording()
+        stopListening(); stopAudioRecording()
         tvStatus.text = "Arrêté"
         if (log.isEmpty() && pcmChunks.isEmpty()) return
         showSaveDialog(timestamp(), fmtDuration())
     }
 
     private fun showSaveDialog(ts: String, dur: String = "") {
-        val hasText  = log.isNotEmpty()
-        val hasAudio = pcmChunks.isNotEmpty()
+        val hasText = log.isNotEmpty(); val hasAudio = pcmChunks.isNotEmpty()
         if (!hasText && !hasAudio) { tvStatus.text = "Rien à sauvegarder"; return }
-        val wavName = if (dur.isNotEmpty()) "Rec_${ts}_${dur}.wav" else "Rec_$ts.wav"
         AlertDialog.Builder(requireContext())
             .setTitle("💾 Sauvegarder")
             .setItems(buildList {
                 if (hasText)  add("📄 Texte .txt")
-                if (hasAudio) add("🎙 Audio .wav ($dur)")
+                if (hasAudio) add("🎙 Audio .wav${if (dur.isNotEmpty()) " ($dur)" else ""}")
             }.toTypedArray()) { _, which ->
-                val options = buildList {
-                    if (hasText)  add("txt")
-                    if (hasAudio) add("wav")
-                }
-                when (options[which]) {
+                val opts = buildList { if (hasText) add("txt"); if (hasAudio) add("wav") }
+                when (opts[which]) {
                     "txt" -> saveTxtLauncher.launch("Conv_$ts.txt")
-                    "wav" -> saveWavLauncher.launch(wavName)
+                    "wav" -> saveWavLauncher.launch("Rec_${ts}${if (dur.isNotEmpty()) "_$dur" else ""}.wav")
                 }
-            }
-            .setNegativeButton("Annuler", null)
-            .show()
+            }.setNegativeButton("Annuler", null).show()
     }
 
     private fun toggleRec() {
         if (isRecording) {
-            val dur = fmtDuration()
-            stopAudioRecording()
-            btnRec.text = "⏺ Rec"
-            tvStatus.text = "Enregistrement arrêté ($dur)"
+            val dur = fmtDuration(); stopAudioRecording()
+            btnRec.text = "⏺ Rec"; tvStatus.text = "Rec arrêté ($dur)"
             if (pcmChunks.isNotEmpty()) {
                 val ts = timestamp()
-                AlertDialog.Builder(requireContext())
-                    .setTitle("💾 Sauvegarder audio")
-                    .setMessage("Sauvegarder l'enregistrement en .wav ?")
-                    .setPositiveButton("🎙 .wav") { _, _ -> saveWavLauncher.launch("Rec_${ts}_${dur}.wav") }
-                    .setNegativeButton("Annuler", null)
-                    .show()
+                AlertDialog.Builder(requireContext()).setTitle("💾 Audio")
+                    .setMessage("Sauvegarder en .wav?")
+                    .setPositiveButton("🎙 .wav") { _, _ -> saveWavLauncher.launch("Rec_${ts}_$dur.wav") }
+                    .setNegativeButton("Annuler", null).show()
             }
         } else {
-            startAudioRecording()
-            btnRec.text = "⏹ Stop Rec"
-            tvStatus.text = "🔴 Enregistrement..."
+            startAudioRecording(); btnRec.text = "⏹ Stop Rec"; tvStatus.text = "🔴 Enregistrement..."
         }
     }
 
@@ -241,14 +278,10 @@ class TraductionFragment : Fragment() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) return
         val bufSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufSize
-        )
-        pcmChunks.clear()
-        recordingStartMs = System.currentTimeMillis()
-        audioRecord?.startRecording()
-        isRecording = true
+        audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufSize)
+        pcmChunks.clear(); recordingStartMs = System.currentTimeMillis()
+        audioRecord?.startRecording(); isRecording = true
         Thread {
             val buf = ByteArray(bufSize)
             while (isRecording) {
@@ -260,61 +293,41 @@ class TraductionFragment : Fragment() {
 
     private fun fmtDuration(): String {
         val s = (System.currentTimeMillis() - recordingStartMs) / 1000
-        return if (s >= 60) "${s / 60}m${s % 60}s" else "${s}s"
+        return if (s >= 60) "${s/60}m${s%60}s" else "${s}s"
     }
 
     private fun stopAudioRecording() {
-        isRecording = false
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
+        isRecording = false; audioRecord?.stop(); audioRecord?.release(); audioRecord = null
     }
 
     private fun saveWav(uri: Uri) {
         scope.launch {
             try {
                 val pcm = synchronized(pcmChunks) { pcmChunks.flatMap { it.toList() }.toByteArray() }
-                val wav = pcmToWav(pcm)
-                requireContext().contentResolver.openOutputStream(uri)?.use { it.write(wav) }
+                requireContext().contentResolver.openOutputStream(uri)?.use { it.write(pcmToWav(pcm)) }
                 requireActivity().runOnUiThread { tvStatus.text = "✓ Audio sauvegardé" }
-            } catch (e: Exception) {
-                requireActivity().runOnUiThread { tvStatus.text = "⚠ Erreur sauvegarde audio" }
-            }
+            } catch (e: Exception) { requireActivity().runOnUiThread { tvStatus.text = "⚠ Erreur audio" } }
         }
     }
 
     private fun saveTxt(uri: Uri) {
         try {
-            requireContext().contentResolver.openOutputStream(uri)?.use {
-                it.write(log.toString().toByteArray(Charsets.UTF_8))
-            }
+            requireContext().contentResolver.openOutputStream(uri)?.use { it.write(log.toString().toByteArray(Charsets.UTF_8)) }
             tvStatus.text = "✓ Texte sauvegardé"
-        } catch (e: Exception) {
-            tvStatus.text = "⚠ Erreur sauvegarde texte"
-        }
+        } catch (e: Exception) { tvStatus.text = "⚠ Erreur texte" }
     }
 
     private fun pcmToWav(pcm: ByteArray): ByteArray {
-        val channels = 1
-        val bitsPerSample = 16
-        val byteRate = SAMPLE_RATE * channels * bitsPerSample / 8
+        val ch = 1; val bits = 16; val byteRate = SAMPLE_RATE * ch * bits / 8
         val out = java.io.ByteArrayOutputStream()
         fun Int.le4() = byteArrayOf(toByte(), shr(8).toByte(), shr(16).toByte(), shr(24).toByte())
         fun Short.le2() = byteArrayOf(toByte(), toInt().shr(8).toByte())
-        out.write("RIFF".toByteArray())
-        out.write((36 + pcm.size).le4())
-        out.write("WAVE".toByteArray())
-        out.write("fmt ".toByteArray())
-        out.write(16.le4())
-        out.write(1.toShort().le2())
-        out.write(channels.toShort().le2())
-        out.write(SAMPLE_RATE.le4())
-        out.write(byteRate.le4())
-        out.write((channels * bitsPerSample / 8).toShort().le2())
-        out.write(bitsPerSample.toShort().le2())
-        out.write("data".toByteArray())
-        out.write(pcm.size.le4())
-        out.write(pcm)
+        out.write("RIFF".toByteArray()); out.write((36+pcm.size).le4())
+        out.write("WAVE".toByteArray()); out.write("fmt ".toByteArray())
+        out.write(16.le4()); out.write(1.toShort().le2()); out.write(ch.toShort().le2())
+        out.write(SAMPLE_RATE.le4()); out.write(byteRate.le4())
+        out.write((ch*bits/8).toShort().le2()); out.write(bits.toShort().le2())
+        out.write("data".toByteArray()); out.write(pcm.size.le4()); out.write(pcm)
         return out.toByteArray()
     }
 
@@ -329,14 +342,11 @@ class TraductionFragment : Fragment() {
     private suspend fun translate(text: String, from: String, to: String): String {
         return try {
             val q = URLEncoder.encode(text, "UTF-8")
-            val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$from&tl=$to&dt=t&q=$q"
-            val conn = URL(urlStr).openConnection() as java.net.HttpURLConnection
+            val conn = URL("https://translate.googleapis.com/translate_a/single?client=gtx&sl=$from&tl=$to&dt=t&q=$q")
+                .openConnection() as java.net.HttpURLConnection
             conn.setRequestProperty("User-Agent", "Mozilla/5.0")
-            conn.setRequestProperty("Accept-Charset", "UTF-8")
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
-            val raw = conn.inputStream.bufferedReader(Charsets.UTF_8).readText()
-            JSONArray(raw).getJSONArray(0).getJSONArray(0).getString(0)
+            conn.connectTimeout = 5000; conn.readTimeout = 5000
+            JSONArray(conn.inputStream.bufferedReader(Charsets.UTF_8).readText()).getJSONArray(0).getJSONArray(0).getString(0)
         } catch (e: Exception) { "" }
     }
 
@@ -344,9 +354,7 @@ class TraductionFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        stopListening()
-        stopAudioRecording()
-        tts?.shutdown()
-        scope.cancel()
+        clockHandler.removeCallbacks(clockRunnable)
+        stopListening(); stopAudioRecording(); tts?.shutdown(); scope.cancel()
     }
 }

@@ -20,7 +20,18 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:gravity="center"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:id="@+id/tvDateTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textColor="#94a3b8"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="12dp"/>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:layout_marginBottom="8dp" android:gravity="center_vertical">
@@ -31,7 +42,7 @@
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="16dp" android:gravity="center_vertical">
+            android:orientation="horizontal" android:layout_marginBottom="12dp" android:gravity="center_vertical">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:text="AUTRE" android:textColor="#94a3b8" android:textSize="11sp" android:minWidth="48dp"/>
             <Spinner android:id="@+id/spinTradOther" android:layout_width="0dp" android:layout_height="44dp"
@@ -39,31 +50,33 @@
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="12dp">
+            android:orientation="horizontal" android:layout_marginBottom="6dp">
             <Button android:id="@+id/btnMoi"
                 android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
                 android:text="🎤 MOI" android:backgroundTint="#7c3aed" android:textColor="#ffffff"
-                android:layout_marginEnd="6dp"
-                android:maxLines="1"/>
+                android:layout_marginEnd="6dp" android:maxLines="1"/>
             <Button android:id="@+id/btnAutre"
                 android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
-                android:text="👂 L'AUTRE" android:backgroundTint="#06b6d4" android:textColor="#ffffff"
-                android:layout_marginEnd="6dp"
-                android:maxLines="1"/>
+                android:text="👂 AUTRE" android:backgroundTint="#06b6d4" android:textColor="#ffffff"
+                android:layout_marginEnd="6dp" android:maxLines="1"/>
             <Button android:id="@+id/btnStop"
                 android:layout_width="wrap_content" android:layout_height="52dp"
                 android:text="⏹" android:backgroundTint="#1a1a2e" android:textColor="#ef4444"
                 android:maxLines="1"/>
         </LinearLayout>
 
+        <Button android:id="@+id/btnRaccrocher"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="⏹ Arrêter" android:backgroundTint="#7f1d1d" android:textColor="#fca5a5"
+            android:layout_marginBottom="8dp" android:maxLines="1"/>
+
         <TextView android:id="@+id/tvTradStatus"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Appuie MOI ou L'AUTRE" android:textColor="#64748b"
-            android:textSize="12sp" android:gravity="center" android:layout_marginBottom="12dp"/>
+            android:textSize="12sp" android:gravity="center" android:layout_marginBottom="8dp"/>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:layout_marginBottom="8dp">
-
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:orientation="vertical"
                 android:background="#0f0f1a" android:padding="10dp" android:layout_marginEnd="6dp">
@@ -74,7 +87,6 @@
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="—" android:textColor="#e2e8f0" android:textSize="14sp" android:minHeight="60dp"/>
             </LinearLayout>
-
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:orientation="vertical"
                 android:background="#0f0f1a" android:padding="10dp">
@@ -91,15 +103,39 @@
             android:layout_width="match_parent" android:layout_height="44dp"
             android:text="⏺ Rec" android:backgroundTint="#ef4444" android:textColor="#ffffff"
             android:gravity="start|center_vertical" android:paddingStart="16dp"
-            android:layout_marginTop="12dp"
-                android:maxLines="1"/>
+            android:layout_marginTop="4dp" android:maxLines="1"/>
 
         <Button android:id="@+id/btnSaveText"
             android:layout_width="match_parent" android:layout_height="48dp"
-            android:text="💾 Sauvegarder" android:backgroundTint="#1a1a2e" android:textColor="#06b6d4"
+            android:text="💾 Sauvegarder WAV / TXT" android:backgroundTint="#1a1a2e" android:textColor="#06b6d4"
             android:gravity="start|center_vertical" android:paddingStart="16dp"
-            android:layout_marginTop="8dp"
-                android:maxLines="1"/>
+            android:layout_marginTop="8dp" android:maxLines="1"/>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="12dp" android:layout_marginBottom="4dp"
+            android:gravity="center_vertical">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="🐛 DEBUG" android:textColor="#f59e0b" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="RMS:" android:textColor="#64748b" android:textSize="11sp"/>
+            <TextView android:id="@+id/tvDebugRms"
+                android:layout_width="48dp" android:layout_height="wrap_content"
+                android:text="0.0" android:textColor="#f59e0b" android:textSize="11sp"
+                android:gravity="end" android:layout_marginStart="4dp" android:layout_marginEnd="8dp"/>
+            <Button android:id="@+id/btnDebugClear"
+                android:layout_width="wrap_content" android:layout_height="30dp"
+                android:text="Effacer" android:backgroundTint="#1a1a2e" android:textColor="#64748b"
+                android:textSize="10sp" android:paddingStart="10dp" android:paddingEnd="10dp"/>
+        </LinearLayout>
+
+        <ScrollView android:id="@+id/scrollDebug"
+            android:layout_width="match_parent" android:layout_height="200dp"
+            android:background="#0f0f1a" android:padding="8dp">
+            <TextView android:id="@+id/tvDebugLog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="" android:textColor="#94a3b8" android:textSize="11sp"
+                android:fontFamily="monospace" android:lineSpacingExtra="3dp"/>
+        </ScrollView>
 
     </LinearLayout>
 </ScrollView>
